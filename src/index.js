@@ -17,48 +17,18 @@ function Square(props) {
 // ---------------------- Board ----------------------------
 // 사각형 9개를 렌더링
 class Board extends React.Component {
-  constructor(props) {
-    super(props); // 모든 React 컴포넌트 클래스는 생성자를 가질 때 super(props) 호출 구문부터 작성해야 함.
-    this.state = {
-      // 배열 값을 null로 초기화
-      squares: Array(9).fill(null),
-      xIsNext: true,
-      // 생성자의 초기 state를 수정하는 것으로 기본값을 설정할 수 있음.
-    };
-  }
-
-  // Square에서 onClick 이벤트가 Board의 handelClick을 호출함.
-  handleClick(i) {
-    // To create a copy of the sqaures array to modify instead of modifiying the existing array, slice() is used.
-    const squares = this.state.squares.slice();
-    if (calculateWinner(squares) || squares[i]) {
-      return;
-    }
-    squares[i] = this.state.xIsNext ? "X" : "O";
-    this.setState({ squares: squares, xIsNext: !this.state.xIsNext });
-  }
-
   // Board에서 Square로 value와 onClick 두개의 props를 전달하는 함수 코드
   renderSquare(i) {
     return (
       <Square
-        value={this.state.squares[i]}
-        onClick={() => this.handleClick(i)}
+        value={this.props.squares[i]}
+        onClick={() => this.props.onClick(i)}
       />
     );
   }
   render() {
-    const winner = calculateWinner(this.state.squares);
-    let status;
-    if (winner) {
-      status = "Winner: " + winner.name;
-    } else {
-      status = "Next player : " + (this.state.xIsNext ? "X" : "O");
-    }
-
     return (
       <div>
-        <div className="status">{status}</div>
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -86,18 +56,61 @@ class Game extends React.Component {
     super(props);
     this.state = {
       history: [{ squares: Array(9).fill(null) }],
+      stepNumber: 0,
       xIsNext: true,
     };
   }
+
+  handleClick(i) {
+    const history = this.state.history.slice(0, this.state.stepNumber + 1);
+    const current = history[history.length - 1];
+    const squares = current.squares.slice();
+    if (calculateWinner(squares) || squares[i]) {
+      return;
+    }
+    squares[i] = this.state.xIsNext ? "X" : "O";
+    this.setState({
+      // push()와 달리 concat()함수는 기존 배열을 변경하지 않기 때문에 더 권장함.
+      history: history.concat([{ squares: squares }]),
+      stepNumber: history.length,
+      xIsNext: !this.state.xIsNext,
+    });
+  }
+
+  jumpTo(step) {
+    this.setState({ stepNumber: step, xIsNext: step % 2 === 0 });
+  }
+
   render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+
+    const moves = history.map((step, move) => {
+      const desc = move ? "Go to move #" + move : "Go to game start";
+      return (
+        <li key={move}>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      );
+    });
+    let status;
+    if (winner) {
+      status = "Winner: " + winner.name;
+    } else {
+      status = "Next player: " + (this.state.xIsNext ? "X" : "O");
+    }
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          <Board
+            squares={current.squares}
+            onClick={(i) => this.handleClick(i)}
+          />
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <div>{status}</div>
+          <ol>{moves}</ol>
         </div>
       </div>
     );
